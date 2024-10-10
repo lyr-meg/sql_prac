@@ -227,3 +227,29 @@ alljoined.issue_count
 from alljoined inner join company_callers
 on alljoined.Company_name = company_callers.Company_name
 and alljoined.issue_count = company_callers.caller_count
+
+-- Q15
+with Issues_updated as (select
+a.*,
+b.Call_date as next_call_date
+from Issue a left join Issue b
+on a.Call_ref = b.Call_ref-1
+and a.Taken_by = b.Taken_by),
+filter as (
+select * from Issues_updated
+where TIMESTAMPDIFF(MINUTE, Call_date, next_call_date) <= 10
+order by Call_ref asc, Call_date asc),
+create_group as (
+select
+Call_ref, Call_date, next_call_date, Taken_by,
+Call_ref - ROW_NUMBER() OVER (ORDER BY Call_ref) AS grp
+from filter)
+select grp,
+max(Taken_by) as Taken_by,
+count(*)+1 as calls,
+min(Call_date) as first_call,
+max(next_call_date) as last_call
+from create_group
+group by grp
+order by calls desc
+limit 1
